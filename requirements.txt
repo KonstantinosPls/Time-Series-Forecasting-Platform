@@ -1,0 +1,12 @@
+streamlit
+pandas
+sqlalchemy
+psycopg2-binary
+numpy
+gluonts
+timesfm
+pyod
+matplotlib
+fpdf2
+git+https://github.com/amazon-science/chronos-forecasting.git@main
+git+https://github.com/time-series-foundation-models/lag-llama.git
