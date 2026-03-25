@@ -115,7 +115,7 @@ def generate_analysis(data_summary, forecast_data, anomaly_data, backtest_data):
                 "system": SYSTEM_PROMPT,
                 "prompt": prompt,
                 "stream": False,
-                "options": {"temperature": 0.1, "num_predict": 900}
+                "options": {"temperature": 0.1, "num_predict": 1200}
             },
             timeout=120
         )

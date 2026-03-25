@@ -28,87 +28,137 @@ def static_chart(fig):
     plt.close(fig)
 
 
-# Data Upload
-st.header("1. Upload Data")
-st.markdown("Upload a CSV file with time-series data. If your CSV has more than two columns, "
-            "you can select which columns to use as timestamp and value.")
+# Data Source
+st.header("1. Load Data")
+st.markdown("Upload a CSV file or load streamed data from the database.")
 
-uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
+data_source = st.radio("Data source", ["Upload CSV", "Load from database"], horizontal=True)
 
-if uploaded_file:
-    raw_df = pd.read_csv(uploaded_file)
+if data_source == "Upload CSV":
+    uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
 
-    # Column selection for multi-column CSVs
-    ts_col, val_col = None, None
-    if raw_df.shape[1] > 2:
-        st.markdown("**Select columns**")
-        sel1, sel2 = st.columns(2)
-        with sel1:
-            ts_col = st.selectbox("Timestamp column", raw_df.columns)
-        with sel2:
-            val_col = st.selectbox("Value column", [c for c in raw_df.columns if c != ts_col])
+    if uploaded_file:
+        raw_df = pd.read_csv(uploaded_file)
 
-    df, error = validate_csv(raw_df, ts_col, val_col)
+        # Column selection for multi-column CSVs
+        ts_col, val_col = None, None
+        if raw_df.shape[1] > 2:
+            st.markdown("**Select columns**")
+            sel1, sel2 = st.columns(2)
+            with sel1:
+                ts_col = st.selectbox("Timestamp column", raw_df.columns)
+            with sel2:
+                val_col = st.selectbox("Value column", [c for c in raw_df.columns if c != ts_col])
 
-    if error:
-        st.error(error)
-    else:
-        df = preprocess(df)
-        st.session_state.df = df
-        st.session_state.series_name = uploaded_file.name.replace(".csv", "")
+        df, error = validate_csv(raw_df, ts_col, val_col)
 
-        freq = pd.infer_freq(df["timestamp"])
-        stats = df["value"].describe()
+        if error:
+            st.error(error)
+        else:
+            df = preprocess(df)
+            st.session_state.df = df
+            st.session_state.series_name = uploaded_file.name.replace(".csv", "")
 
-        st.session_state.data_summary = {
-            "series_name": st.session_state.series_name,
-            "total_rows": len(df),
-            "time_range": f"{df['timestamp'].min()} to {df['timestamp'].max()}",
-            "frequency": freq or "Could not detect",
-            "columns": [
-                f"{col} ({df[col].dtype}), {df[col].isna().sum()} nulls"
-                for col in raw_df.columns
-            ],
-            "statistics": {
-                "mean": stats["mean"],
-                "std": stats["std"],
-                "min": stats["min"],
-                "25%": stats["25%"],
-                "50%": stats["50%"],
-                "75%": stats["75%"],
-                "max": stats["max"]
+            freq = pd.infer_freq(df["timestamp"])
+            stats = df["value"].describe()
+
+            st.session_state.data_summary = {
+                "series_name": st.session_state.series_name,
+                "total_rows": len(df),
+                "time_range": f"{df['timestamp'].min()} to {df['timestamp'].max()}",
+                "frequency": freq or "Could not detect",
+                "columns": ["timestamp (datetime64[ns]), 0 nulls", "value (float64), 0 nulls"],
+                "statistics": {
+                    "mean": stats["mean"],
+                    "std": stats["std"],
+                    "min": stats["min"],
+                    "25%": stats["25%"],
+                    "50%": stats["50%"],
+                    "75%": stats["75%"],
+                    "max": stats["max"]
+                }
             }
-        }
 
-        # Data info layout
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("**Data preview**")
-            st.dataframe(raw_df.head(), use_container_width=True)
-        with col2:
-            st.markdown("**Column info**")
-            for info in st.session_state.data_summary["columns"]:
-                st.text(info)
-            st.metric("Detected frequency", freq or "Unknown")
-            st.metric("Total rows", len(df))
-        with col3:
-            st.markdown("**Statistics**")
-            for k, v in st.session_state.data_summary["statistics"].items():
-                st.text(f"{k}: {v:.2f}")
+else:
+    from sqlalchemy import text
+    engine = get_engine()
+    with engine.connect() as conn:
+        series_list = conn.execute(
+            text("SELECT DISTINCT series_name FROM time_series_data ORDER BY series_name")
+        ).fetchall()
 
-        # Static chart of raw data
-        fig, ax = plt.subplots(figsize=(12, 3))
-        ax.plot(df["timestamp"], df["value"], color="#1f77b4", linewidth=1)
-        ax.set_title("Uploaded data")
-        ax.set_xlabel("Time")
-        ax.set_ylabel("Value")
-        ax.grid(True, alpha=0.3)
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        static_chart(fig)
+    series_names = [row[0] for row in series_list]
 
-        series_name = st.text_input("Series name", value=st.session_state.series_name)
-        st.session_state.series_name = series_name
+    if not series_names:
+        st.warning("No data in the database yet. Start the Kafka streaming pipeline or upload a CSV first.")
+    else:
+        selected_series = st.selectbox("Select a data series", series_names)
+
+        if st.button("Load data"):
+            with engine.connect() as conn:
+                raw_df = pd.read_sql(
+                    text("SELECT timestamp, value FROM time_series_data WHERE series_name = :name ORDER BY timestamp"),
+                    conn, params={"name": selected_series}
+                )
+
+            raw_df["timestamp"] = pd.to_datetime(raw_df["timestamp"])
+            raw_df = raw_df.drop_duplicates(subset="timestamp", keep="first")
+            df = raw_df.copy()
+            st.session_state.df = df
+            st.session_state.series_name = selected_series
+
+            freq = pd.infer_freq(df["timestamp"])
+            stats = df["value"].describe()
+
+            st.session_state.data_summary = {
+                "series_name": selected_series,
+                "total_rows": len(df),
+                "time_range": f"{df['timestamp'].min()} to {df['timestamp'].max()}",
+                "frequency": freq or "Could not detect",
+                "columns": ["timestamp (datetime64[ns]), 0 nulls", "value (float64), 0 nulls"],
+                "statistics": {
+                    "mean": stats["mean"],
+                    "std": stats["std"],
+                    "min": stats["min"],
+                    "25%": stats["25%"],
+                    "50%": stats["50%"],
+                    "75%": stats["75%"],
+                    "max": stats["max"]
+                }
+            }
+
+# Display data summary if loaded
+if st.session_state.df is not None and st.session_state.data_summary:
+    df = st.session_state.df
+    summary = st.session_state.data_summary
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**Data preview**")
+        st.dataframe(df.head(), use_container_width=True)
+    with col2:
+        st.markdown("**Column info**")
+        for info in summary["columns"]:
+            st.text(info)
+        st.metric("Detected frequency", summary["frequency"])
+        st.metric("Total rows", summary["total_rows"])
+    with col3:
+        st.markdown("**Statistics**")
+        for k, v in summary["statistics"].items():
+            st.text(f"{k}: {v:.2f}")
+
+    fig, ax = plt.subplots(figsize=(12, 3))
+    ax.plot(df["timestamp"], df["value"], color="#1f77b4", linewidth=1)
+    ax.set_title(f"Data: {summary['series_name']}")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Value")
+    ax.grid(True, alpha=0.3)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    static_chart(fig)
+
+    series_name = st.text_input("Series name", value=st.session_state.series_name)
+    st.session_state.series_name = series_name
 
 
 # Only show remaining sections if data is loaded

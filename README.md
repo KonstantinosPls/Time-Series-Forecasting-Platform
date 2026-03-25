@@ -3,11 +3,26 @@
 A forecasting platform that accepts univariate time-series CSV data, runs three foundation models, produces ensemble predictions with confidence intervals, detects anomalies, and generates AI analysis reports.
 
 
+<details>
+<summary>Streamlit Screenshots</summary>
+
 ![Data Upload](Screenshots/Data_Upload.png)
 ![Forecast](Screenshots/Forecast.png)
 ![Model Evaluation](Screenshots/Model_Evaluation.png)
 ![Anomaly Detection](Screenshots/Anomaly_Detection.png)
 ![AI Analysis](Screenshots/AI_Analysis.png)
+
+</details>
+
+<details>
+<summary>Grafana Screenshots</summary>
+
+![Grafana Dashboard](Screenshots/Grafana_Dashboard.png)
+![Raw Data](Screenshots/Raw_Data.png)
+![Models Forecast](Screenshots/Models_Forecast.png)
+![Anomaly Detection Grafana](Screenshots/Anomaly_Detection_Grafana.png)
+
+</details>
 
 ## What the platform does
 
@@ -36,11 +51,13 @@ All models run zero-shot, meaning they produce forecasts on any dataset without 
 |-----------|------------|
 | Web UI | Streamlit |
 | Database | PostgreSQL + TimescaleDB |
+| Streaming | Apache Kafka |
 | Monitoring | Grafana |
 | Anomaly detection | PyOD (Isolation Forest) |
 | AI analysis | Qwen 2.5 3B via Ollama |
 | PDF reports | fpdf2 + Matplotlib |
-| Containerization | Docker Compose |
+| CI/CD | GitHub Actions |
+| Containerization | Docker Compose (8 containers) |
 
 ## Quick Start
 
@@ -71,9 +88,59 @@ The workflow is splitted into five sections:
 
 **5. Download Report** -- Generates a comprehensive PDF report containing data summary, forecast results with charts, full anomaly table, backtest metrics with comparison chart, and the AI-generated analysis.
 
+## Architecture
+
+```mermaid
+graph LR
+    subgraph Data Ingestion
+        API[OpenWeatherMap API] -->|Every 2 min| Producer
+        Producer -->|Kafka Topic| Kafka
+        Kafka --> Consumer
+        CSV[CSV Upload] --> Streamlit
+    end
+
+    subgraph Storage
+        Consumer --> TimescaleDB
+        Streamlit --> TimescaleDB
+    end
+
+    subgraph Forecasting
+        Scheduler -->|Reads data| TimescaleDB
+        Scheduler --> Chronos-2
+        Scheduler --> TimesFM
+        Scheduler --> Lag-Llama
+        Chronos-2 -->|Predictions| TimescaleDB
+        TimesFM -->|Predictions| TimescaleDB
+        Lag-Llama -->|Predictions| TimescaleDB
+    end
+
+    subgraph Analysis
+        Streamlit -->|On demand| Ollama[Ollama / Qwen 2.5]
+        Ollama -->|AI Report| Streamlit
+    end
+
+    subgraph Visualization
+        TimescaleDB --> Grafana[Grafana Dashboard]
+        TimescaleDB --> Streamlit
+    end
+```
+
+## Real-Time Streaming
+
+The platform supports live data ingestion through Apache Kafka. A producer service fetches data from an external API at regular intervals, pushes it to a Kafka topic, and a consumer service saves it to TimescaleDB. A scheduler service runs every hour, reads the accumulated data, runs all forecast models, and writes predictions back to the database. In a production environment, the scheduler could be replaced with Prefect for more robust workflow orchestration, retry logic, and monitoring.
+
+For this project, I used an OpenWeatherMap API key to stream live temperature data for Athens, Greece. The Grafana screenshots below show this data. The streaming pipeline can be adapted to any data source (crypto prices, energy demand, sensor readings) by modifying the producer script.
+
+Lag-Llama is excluded from the automated pipeline until enough data accumulates (at least twice the forecast horizon). This is because Lag-Llama relies on lag features that need sufficient historical data to produce meaningful results. Chronos and TimesFM handle smaller datasets well and run from the start. Once the threshold is crossed, Lag-Llama joins the ensemble automatically.
+
 ## Grafana
 
-The platform includes a Grafana monitoring dashboard connected to TimescaleDB. While the current workflow is batch oriented via Streamlit, the Grafana layer is designed to support future real time streaming via Apache Kafka, enabling live forecast updates and anomaly alerts as new data arrives continuously.
+The Grafana dashboard is provisioned automatically on startup with three panels:
+- Live data from the streaming pipeline
+- Forecast predictions from each model and the ensemble
+- Anomaly detection with flagged data points
+
+The dashboard auto-refreshes every 10 seconds.
 
 ## Limitations
 
@@ -87,16 +154,7 @@ The platform includes a Grafana monitoring dashboard connected to TimescaleDB. W
 
 **Infrastructure:** Requires an NVIDIA GPU with CUDA support. The first forecast run is slow due to model weight downloads (~2.5 GB total). Ollama must be running separately from Docker.
 
-**AI analysis:** The Qwen 2.5 3B model is constrained to 900 output tokens per analysis. On rare occasions it may produce slightly generic recommendations, though all numerical references are strictly grounded in the computed results.
-
-## Future Improvements
-
-- Apache Kafka integration for real-time data streaming and continuous forecasting
-- Prefect orchestration for scheduled model retraining
-- Adaptive ensemble weights based on per-dataset backtest performance
-- Confidence interval visualization in forecast charts
-- GitHub Actions CI/CD pipeline for automated testing and Docker builds
-- Support for multivariate time-series forecasting
+**AI analysis:** The Qwen 2.5 3B model is constrained to 1200 output tokens per analysis. On rare occasions it may produce slightly generic recommendations, though all numerical references are strictly grounded in the computed results.
 
 ## Requirements
 

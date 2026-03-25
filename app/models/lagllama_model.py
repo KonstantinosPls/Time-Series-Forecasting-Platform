@@ -33,6 +33,7 @@ def forecast(model_kwargs, series, timestamps, horizon, freq=None):
 
     # Build GluonTS dataset with uniform index
     df = pd.DataFrame({"target": series.values.astype("float32")}, index=pd.DatetimeIndex(timestamps))
+    df = df[~df.index.duplicated(keep="first")]
     inferred_freq = freq or pd.infer_freq(df.index) or "D"
     df = df.asfreq(inferred_freq)
     df["target"] = df["target"].interpolate()

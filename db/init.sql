@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS forecasts (
     timestamp TIMESTAMPTZ NOT NULL,
     value DOUBLE PRECISION NOT NULL,
     lower_bound DOUBLE PRECISION,
-    upper_bound DOUBLE PRECISION
+    upper_bound DOUBLE PRECISION,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 SELECT create_hypertable('forecasts', 'timestamp', if_not_exists => TRUE);
