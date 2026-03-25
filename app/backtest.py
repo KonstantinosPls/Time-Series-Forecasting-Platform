@@ -1,4 +1,3 @@
-import numpy as np
 from eval_metrics import mae, mase
 
 def train_test_split(series, test_ratio=0.2):

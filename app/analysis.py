@@ -1,5 +1,4 @@
 import requests
-import json
 
 OLLAMA_URL = "http://host.docker.internal:11434/api/generate"
 

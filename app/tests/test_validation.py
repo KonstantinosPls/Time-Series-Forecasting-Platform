@@ -26,7 +26,7 @@ def test_weighted_average():
 def test_mae():
     actual = np.array([10, 20, 30])
     predicted = np.array([12, 18, 33])
-    assert mae(actual, predicted) == pytest.approx(3.0)
+    assert mae(actual, predicted) == pytest.approx(7.0 / 3.0)
 
 
 def test_mae_perfect():
@@ -56,12 +56,12 @@ def test_validate_csv_valid():
         "timestamp": pd.date_range("2026-01-01", periods=5, freq="h"),
         "value": [1.0, 2.0, 3.0, 4.0, 5.0]
     })
-    result, validated = validate_csv(df)
-    assert result is None
+    validated, error = validate_csv(df)
+    assert error is None
     assert len(validated) == 5
 
 
 def test_validate_csv_missing_columns():
     df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
-    result, validated = validate_csv(df, ts_col="timestamp", val_col="value")
-    assert result is not None  # should return error message
+    _, error = validate_csv(df)
+    assert error is not None
