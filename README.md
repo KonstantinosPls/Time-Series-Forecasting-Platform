@@ -132,7 +132,7 @@ graph LR
 
 The platform supports live data ingestion through Apache Kafka. A producer service fetches data from an external API at regular intervals, pushes it to a Kafka topic, and a consumer service saves it to TimescaleDB. A scheduler service runs every hour, reads the accumulated data, runs all forecast models, and writes predictions back to the database. In a production environment, the scheduler could be replaced with Prefect for more robust workflow orchestration, retry logic, and monitoring.
 
-For this project, I used an OpenWeatherMap API key to stream live temperature data for Athens, Greece. The Grafana screenshots below show this data. The streaming pipeline can be adapted to any data source (crypto prices, energy demand, sensor readings) by modifying the producer script.
+For this project, I used an OpenWeatherMap API key to stream live temperature data for Athens, Greece. The Grafana screenshots show this data. The streaming pipeline can be adapted to any data source (crypto prices, energy demand, sensor readings) by modifying the producer script.
 
 Lag-Llama is excluded from the automated pipeline until enough data accumulates (at least twice the forecast horizon). This is because Lag-Llama relies on lag features that need sufficient historical data to produce meaningful results. Chronos and TimesFM handle smaller datasets well and run from the start. Once the threshold is crossed, Lag-Llama joins the ensemble automatically.
 
@@ -155,7 +155,7 @@ The dashboard auto-refreshes every 10 seconds.
 
 **Zero-shot accuracy:** All models run without fine-tuning on your specific data. Performance varies by dataset. Models work best on data with clear repeating patterns and struggle with highly volatile data (daily temperatures).
 
-**Infrastructure:** Requires an NVIDIA GPU with CUDA support. The first forecast run is slow due to model weight downloads (~2.5 GB total). Ollama must be running separately from Docker.
+**Infrastructure:** Requires an NVIDIA GPU with CUDA support. The first forecast run is slow due to model weight downloads. Ollama must be running separately from Docker.
 
 **AI analysis:** The Qwen 2.5 3B model is constrained to 1200 output tokens per analysis. On rare occasions it may produce slightly generic recommendations, though all numerical references are strictly grounded in the computed results.
 
