@@ -62,6 +62,6 @@ def test_validate_csv_valid():
 
 
 def test_validate_csv_missing_columns():
-    df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+    df = pd.DataFrame({"name": ["foo", "bar"], "label": ["x", "y"]})
     _, error = validate_csv(df)
     assert error is not None
