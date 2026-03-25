@@ -1,7 +1,10 @@
 # Multi-Model Time-Series Forecasting Platform
 
-A forecasting platform that accepts univariate time-series CSV data, runs three foundation models, produces ensemble predictions, detects anomalies, and generates AI analysis reports.
+A forecasting platform that accepts univariate time-series data through CSV upload or real-time Kafka streaming, runs three foundation models, produces ensemble predictions, detects anomalies, generates AI analysis reports and displays live results on a Grafana dashboard.
 
+
+
+The Streamlit screenshots were taken using the Melbourne daily minimum temperatures dataset (1981-1990). The Grafana screenshots show live weather data streamed from the OpenWeatherMap API for Athens, Greece.
 
 <details>
 <summary>Streamlit Screenshots</summary>
@@ -93,7 +96,7 @@ The workflow is splitted into five sections:
 ```mermaid
 graph LR
     subgraph Data Ingestion
-        API[OpenWeatherMap API] -->|Every 2 min| Producer
+        API[External API] -->|Periodic fetch| Producer
         Producer -->|Kafka Topic| Kafka
         Kafka --> Consumer
         CSV[CSV Upload] --> Streamlit
