@@ -1,6 +1,6 @@
 # Multi-Model Time-Series Forecasting Platform
 
-A forecasting platform that accepts univariate time-series CSV data, runs three foundation models, produces ensemble predictions with confidence intervals, detects anomalies, and generates AI analysis reports.
+A forecasting platform that accepts univariate time-series CSV data, runs three foundation models, produces ensemble predictions, detects anomalies, and generates AI analysis reports.
 
 
 <details>
