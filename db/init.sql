@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS time_series_data (
 );
 
 SELECT create_hypertable('time_series_data', 'timestamp', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_ts_data_series ON time_series_data (series_name, timestamp DESC);
 
 CREATE TABLE IF NOT EXISTS forecasts (
     id SERIAL,
@@ -21,6 +22,8 @@ CREATE TABLE IF NOT EXISTS forecasts (
 );
 
 SELECT create_hypertable('forecasts', 'timestamp', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_forecasts_series ON forecasts (series_name, model_name, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_forecasts_created ON forecasts (created_at DESC);
 
 CREATE TABLE IF NOT EXISTS anomalies (
     id SERIAL,
@@ -32,3 +35,4 @@ CREATE TABLE IF NOT EXISTS anomalies (
 );
 
 SELECT create_hypertable('anomalies', 'timestamp', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_anomalies_series ON anomalies (series_name, timestamp DESC);

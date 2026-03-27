@@ -65,3 +65,68 @@ def test_validate_csv_missing_columns():
     df = pd.DataFrame({"name": ["foo", "bar"], "label": ["x", "y"]})
     _, error = validate_csv(df)
     assert error is not None
+
+
+def test_validate_csv_non_numeric_values():
+    df = pd.DataFrame({
+        "timestamp": pd.date_range("2026-01-01", periods=3, freq="h"),
+        "value": ["abc", "def", "ghi"]
+    })
+    _, error = validate_csv(df)
+    assert error is not None
+
+
+def test_validate_csv_manual_column_selection():
+    df = pd.DataFrame({
+        "date": pd.date_range("2026-01-01", periods=3, freq="h"),
+        "temp": [10.0, 11.0, 12.0],
+        "humidity": [50, 60, 70]
+    })
+    result, error = validate_csv(df, ts_col="date", val_col="temp")
+    assert error is None
+    assert len(result) == 3
+
+
+def test_mae_single_value():
+    assert mae(np.array([5]), np.array([8])) == pytest.approx(3.0)
+
+
+def test_mase_constant_training():
+    actual = np.array([10, 10, 10])
+    predicted = np.array([11, 11, 11])
+    training = np.array([5, 5, 5, 5])
+    result = mase(actual, predicted, training)
+    assert result == np.inf
+
+
+def test_weighted_average_single_model():
+    f1 = (np.array([10, 20, 30]), np.array([8, 16, 24]), np.array([12, 24, 36]))
+    median, _, _ = weighted_average([f1], [1.0])
+    assert median == pytest.approx([10, 20, 30])
+
+
+def test_anomaly_all_identical():
+    values = np.array([10.0] * 100)
+    labels, scores = detect_anomalies(values)
+    assert len(labels) == 100
+
+
+def test_preprocess_removes_duplicates():
+    from validation import preprocess
+    df = pd.DataFrame({
+        "timestamp": pd.to_datetime(["2026-01-01", "2026-01-01", "2026-01-02"]),
+        "value": [10.0, 11.0, 12.0]
+    })
+    result = preprocess(df)
+    assert len(result) == 2
+
+
+def test_preprocess_sorts_chronologically():
+    from validation import preprocess
+    df = pd.DataFrame({
+        "timestamp": pd.to_datetime(["2026-01-03", "2026-01-01", "2026-01-02"]),
+        "value": [30.0, 10.0, 20.0]
+    })
+    result = preprocess(df)
+    assert result["value"].iloc[0] == 10.0
+    assert result["value"].iloc[-1] == 30.0

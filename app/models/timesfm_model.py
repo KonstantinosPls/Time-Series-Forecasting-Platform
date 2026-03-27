@@ -19,14 +19,21 @@ def load_model(horizon=128):
     return model
 
 def forecast(model, series, horizon):
-    # TimesFM expects a list of arrays
-    point_forecast, _ = model.forecast(
+    point_forecast, quantile_forecast = model.forecast(
         [series.values],
         freq=[0]
     )
 
     median = np.array(point_forecast[0][:horizon])
-    lower = median * 0.9
-    upper = median * 1.1
+
+    # Use quantile forecasts if available, otherwise estimate from residuals
+    if quantile_forecast is not None and len(quantile_forecast) > 0:
+        q_data = np.array(quantile_forecast[0])
+        lower = q_data[:horizon, 0] if q_data.ndim == 2 else median * 0.9
+        upper = q_data[:horizon, -1] if q_data.ndim == 2 else median * 1.1
+    else:
+        std = np.std(series.values[-min(len(series), 50):])
+        lower = median - 1.28 * std
+        upper = median + 1.28 * std
 
     return median, lower, upper
