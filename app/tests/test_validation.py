@@ -114,11 +114,11 @@ def test_anomaly_all_identical():
 def test_preprocess_removes_duplicates():
     from validation import preprocess
     df = pd.DataFrame({
-        "timestamp": pd.to_datetime(["2026-01-01", "2026-01-01", "2026-01-02"]),
-        "value": [10.0, 11.0, 12.0]
+        "timestamp": pd.to_datetime(["2026-01-01", "2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04"]),
+        "value": [10.0, 11.0, 12.0, 13.0, 14.0]
     })
     result = preprocess(df)
-    assert len(result) == 2
+    assert len(result) == 4
 
 
 def test_preprocess_sorts_chronologically():
