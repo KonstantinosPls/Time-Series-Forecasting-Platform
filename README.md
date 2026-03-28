@@ -153,7 +153,7 @@ The dashboard auto-refreshes every 10 seconds.
 
 **Data format:** Only univariate time-series data is supported (one timestamp column and one value column). Multivariate forecasting (multiple value columns) could be implemented with the use of different models.
 
-**Zero-shot accuracy:** All models run without fine-tuning on your specific data. Performance varies by dataset. Models work best on data with clear repeating patterns and struggle with highly volatile data (daily temperatures).
+**Zero-shot accuracy:** All models run without fine-tuning on your specific data. Performance varies by dataset. Models work best on data with clear repeating patterns but may struggle with highly volatile data.
 
 **Infrastructure:** Requires an NVIDIA GPU with CUDA support. The first forecast run is slow due to model weight downloads. Ollama must be running separately from Docker.
 
